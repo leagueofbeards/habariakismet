@@ -1,5 +1,5 @@
 <?php
-
+namespace Habari; 
 require_once 'vendor/Akismet.class.php';
 
 class HabariAkismet extends Plugin
@@ -28,15 +28,19 @@ class HabariAkismet extends Plugin
         if ($plugin_id == $this->plugin_id()) {
             switch ($action) {
                 case _t('Configure'):
-
                     $form = new FormUI(strtolower(get_class($this)));
-                    $form->append('select', 'provider', 'habariakismet__provider', _t('Service'));
+                    $p = FormControlSelect::create('provider', 'habariakismet__provider')->label('Service');
+                    $form->append($p);
+                    
                     $form->provider->options = array(
                         'Akismet' => 'Akismet',
                         'TypePad AntiSpam' => 'TypePad AntiSpam'
                     );
-                    $api_key = $form->append('text', 'api_key', 'habariakismet__api_key', _t('API Key'));
-                    $api_key->add_validator('validate_required');
+                    
+                    $k = FormControlText::create('api_key', 'habariakismet__api_key')->label('API Key');
+                    
+                    $api_key = $form->append($k);
+                    $api_key->add_validator(array($this, 'validate_required'));
                     $api_key->add_validator(array($this, 'validate_api_key'));
                     $form->append('submit', 'save', 'Save');
                     $form->out();
@@ -49,11 +53,11 @@ class HabariAkismet extends Plugin
     {
         $endpoint = ($form->provider->value == 'Akismet') ? self::SERVER_AKISMET : self::SERVER_TYPEPAD;
 
-        $a = new Akismet(Site::get_url('habari'), $key);
+        $a = new \Akismet(Site::get_url('habari'), $form->api_key->value);
         $a->setAkismetServer($endpoint);
 
         if (!$a->isKeyValid()) {
-            return array(sprintf(_t('Sorry, the %s API key %s is <b>invalid</b>. Please check to make sure the key is entered correctly.'), $form->provider->value, $key));
+            return array(sprintf(_t('Sorry, the %s API key %s is <b>invalid</b>. Please check to make sure the key is entered correctly.'), $form->provider->value, $form->api_key->value));
         }
 
         return array();
@@ -77,7 +81,7 @@ class HabariAkismet extends Plugin
 
         $endpoint = ($provider == 'Akismet') ? self::SERVER_AKISMET : self::SERVER_TYPEPAD;
 
-        $a = new Akismet(Site::get_url('habari'), $api_key);
+        $a = new \Akismet(Site::get_url('habari'), $api_key);
         $a->setAkismetServer($endpoint);
         $a->setCommentAuthor($comment->name);
         $a->setCommentAuthorEmail($comment->email);
@@ -101,7 +105,7 @@ class HabariAkismet extends Plugin
         $provider = Options::get('habariakismet__provider');
         $endpoint = ($provider == 'Akismet') ? self::SERVER_AKISMET : self::SERVER_TYPEPAD;
 
-        $a = new Akismet(Site::get_url('habari'), Options::get('habariakismet__api_key'));
+        $a = new \Akismet(Site::get_url('habari'), Options::get('habariakismet__api_key'));
         $a->setAkismetServer($endpoint);
 
         foreach ($comments as $comment) {
